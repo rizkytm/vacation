@@ -1,9 +1,9 @@
-import { Injectable } from "@angular/core";
-import { Place } from "./place.model";
-import { AuthService } from "../auth/auth.service";
-import { BehaviorSubject, of } from "rxjs";
-import { take, map, tap, delay, switchMap } from "rxjs/operators";
-import { HttpClient } from "@angular/common/http";
+import { Injectable } from '@angular/core';
+import { Place } from './place.model';
+import { AuthService } from '../auth/auth.service';
+import { BehaviorSubject, of } from 'rxjs';
+import { take, map, tap, delay, switchMap } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
 
 interface PlaceData {
   availableFrom: string;
@@ -47,7 +47,7 @@ interface PlaceData {
 // )
 
 @Injectable({
-  providedIn: "root"
+  providedIn: 'root',
 })
 export class PlacesService {
   private _places = new BehaviorSubject<Place[]>([]);
@@ -61,10 +61,10 @@ export class PlacesService {
   fetchPlaces() {
     return this.http
       .get<{ [key: string]: PlaceData }>(
-        "https://vacation-c00a9.firebaseio.com/offered-places.json"
+        'https://vacation-c00a9.firebaseio.com/offered-places.json'
       )
       .pipe(
-        map(resData => {
+        map((resData) => {
           const places = [];
           for (const key in resData) {
             if (resData.hasOwnProperty(key)) {
@@ -85,7 +85,7 @@ export class PlacesService {
           return places;
           // return [];
         }),
-        tap(places => {
+        tap((places) => {
           this._places.next(places);
         })
       );
@@ -97,7 +97,7 @@ export class PlacesService {
         `https://vacation-c00a9.firebaseio.com/offered-places/${id}.json`
       )
       .pipe(
-        map(placeData => {
+        map((placeData) => {
           return new Place(
             id,
             placeData.title,
@@ -120,35 +120,41 @@ export class PlacesService {
     dateTo: Date
   ) {
     let generatedId: string;
-    const newPlace = new Place(
-      Math.random().toString(),
-      title,
-      description,
-      "../assets/places-images/manhattan.jpg",
-      price,
-      dateFrom,
-      dateTo,
-      this.authService.userId
-    );
-    return this.http
-      .post<{ name: string }>(
-        "https://vacation-c00a9.firebaseio.com/offered-places.json",
-        {
-          ...newPlace,
-          id: null
+    let newPlace: Place;
+    return this.authService.userId.pipe(
+      take(1),
+      switchMap((userId) => {
+        if (!userId) {
+          throw new Error('No user found!');
         }
-      )
-      .pipe(
-        switchMap(resData => {
-          generatedId = resData.name;
-          return this.places;
-        }),
-        take(1),
-        tap(places => {
-          newPlace.id = generatedId;
-          this._places.next(places.concat(newPlace));
-        })
-      );
+        newPlace = new Place(
+          Math.random().toString(),
+          title,
+          description,
+          '../assets/places-images/manhattan.jpg',
+          price,
+          dateFrom,
+          dateTo,
+          userId
+        );
+        return this.http.post<{ name: string }>(
+          'https://vacation-c00a9.firebaseio.com/offered-places.json',
+          {
+            ...newPlace,
+            id: null,
+          }
+        );
+      }),
+      switchMap((resData) => {
+        generatedId = resData.name;
+        return this.places;
+      }),
+      take(1),
+      tap((places) => {
+        newPlace.id = generatedId;
+        this._places.next(places.concat(newPlace));
+      })
+    );
     // return this.places.pipe(
     //   take(1),
     //   delay(1000),
@@ -162,15 +168,15 @@ export class PlacesService {
     let updatedPlaces: Place[];
     return this.places.pipe(
       take(1),
-      switchMap(places => {
+      switchMap((places) => {
         if (!places || places.length <= 0) {
           return this.fetchPlaces();
         } else {
           return of(places);
         }
       }),
-      switchMap(places => {
-        const updatedPlaceIndex = places.findIndex(pl => pl.id === placeId);
+      switchMap((places) => {
+        const updatedPlaceIndex = places.findIndex((pl) => pl.id === placeId);
         updatedPlaces = [...places];
         const oldPlace = updatedPlaces[updatedPlaceIndex];
         updatedPlaces[updatedPlaceIndex] = new Place(
